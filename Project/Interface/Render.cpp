@@ -6,11 +6,10 @@
 #include "../Core/Engine.h"
 
 bool showmenu = true;
-Engine engine = Engine();
+Engine engine = Engine(); // A nossa instância principal do motor
 
 void Render(HWND hwnd)
 {
-    engine.EntityList();
     if (showmenu) {
         SetWindowLongPtr(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) & ~WS_EX_LAYERED);
 
@@ -76,10 +75,9 @@ void Render(HWND hwnd)
     }
     else {
         SetWindowLongPtr(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_LAYERED);
+
+        // Aqui SÓ FICA a parte gráfica! Nada de cálculos pesados de memória.
         engine.RenderEsp();
-        engine.AimAssistence();
-        engine.RobotList();
-        engine.WorldList();
     }
 
     if (GetAsyncKeyState(VK_INSERT) & 1) { showmenu = !showmenu; }

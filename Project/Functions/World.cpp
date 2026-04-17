@@ -22,7 +22,7 @@ void Engine::WorldList()
 
         int actor_count =
             Memory::read<int>(
-                sPersistentLevel + (Offsets::AActors + sizeof(uintptr_t))
+                sPersistentLevel + Offsets::ActorCount
             );
 
         if (sActors == 0 || actor_count <= 0 || actor_count > 10000)
@@ -138,7 +138,7 @@ void Engine::WorldList()
 
             if (actor.ActorName == "Corpse")
             {
-                auto playerState = Memory::read<uintptr_t>(key + Offsets::APlayerState);
+                auto playerState = Memory::read<uintptr_t>(key + Offsets::PlayerState);
                 if (playerState && IsUsermodePtr(playerState))
                 {
                     PlayerHealthInfo healthInfo = Memory::read<PlayerHealthInfo>(playerState + Offsets::HealthInfo);

@@ -23,7 +23,7 @@ void Engine::RobotList()
 
     int actor_count =
         Memory::read<int>(
-            sPersistentLevel + (Offsets::AActors + sizeof(uintptr_t))
+                sPersistentLevel + Offsets::ActorCount
         );
 
     if (sActors == 0 || actor_count <= 0 || actor_count > 10000)
@@ -87,7 +87,7 @@ void Engine::RobotList()
         if (!robotsList.contains(itemName))
             continue;
 
-        auto IsBreaked = Memory::read<bool>(actor + Offsets::bIsBreaked);
+        auto IsBreaked = Memory::read<bool>(actor + Offsets::PlayerStatusVar);
         if (IsBreaked)
             continue;
 
@@ -101,7 +101,7 @@ void Engine::RobotList()
             continue;
 
         uintptr_t mesh =
-            Memory::read<uintptr_t>(actor + Offsets::USkeletalMeshComponent);
+            Memory::read<uintptr_t>(actor + Offsets::Mesh);
         if (!mesh)
             continue;
 
@@ -127,7 +127,7 @@ void Engine::RobotList()
 
         actor.category = 3; // Robot
 
-        actor.IsBreaked = Memory::read<bool>(key + Offsets::bIsBreaked);
+        actor.IsBreaked = Memory::read<bool>(key + Offsets::PlayerStatusVar);
 
         if (actor.IsBreaked) {
             it = localCache.erase(it);

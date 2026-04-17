@@ -162,7 +162,7 @@ std::uintptr_t Engine::GetBoneArrayDecrypt(std::uintptr_t skeletalmesh)
 
     // Novos offsets da encriptação do Array
     constexpr uintptr_t SHUFFLE_MASK_RVA = 0xAC2BC00;
-    constexpr uintptr_t offset_encrypted = 0x7A0;
+    constexpr uintptr_t offset_encrypted = 0x780;
 
     __m128i encrypted{};
     Memory::ReadRaw(skeletalmesh + offset_encrypted, &encrypted, sizeof(__m128i));
@@ -186,17 +186,18 @@ std::uintptr_t Engine::GetBoneArrayDecrypt(std::uintptr_t skeletalmesh)
         return 0;
 
     // Flag e Índice do LOD (Level of Detail)
-    uint16_t flag = Memory::read<uint16_t>(skeletalmesh + 0x7FA) & 1;
-    uint32_t lod_index = flag << 4;
+    uint32_t flagWord = Memory::read<uint32_t>(skeletalmesh + 0x810);
+    uint32_t lod_index = (flagWord >> 0x1A) & 0x10;
 
-    return Memory::read<uint64_t>(base + lod_index + 0x118);
+    return Memory::read<uint64_t>(base + lod_index + 0x150);
 }
 
 uintptr_t Engine::GetGameInstance(uint64_t uworldAddr)
 {
     if (!uworldAddr) return 0;
 
-    __m128i encrypted = Memory::read<__m128i>(uworldAddr + 0x2d0);
+    // GameInstance agora usa fastcall (desencriptação)
+    __m128i encrypted = Memory::read<__m128i>(uworldAddr + 0x458);
     __m128i mask = Memory::read<__m128i>(Memory::getBaseAddress() + 0xb09c350);
 
     __m128i shuffled = _mm_shufflelo_epi16(encrypted, 0x93);
@@ -208,7 +209,7 @@ uintptr_t Engine::GetGameInstance(uint64_t uworldAddr)
 uintptr_t Engine::GetCameraManagerFromActors()
 {
 	uintptr_t actors_ptr = Memory::read<uintptr_t>(PersistentLevel + Offsets::AActors);
-	int actor_count = Memory::read<int>(PersistentLevel + (Offsets::AActors + sizeof(uintptr_t)));
+	int actor_count = Memory::read<int>(PersistentLevel + Offsets::ActorCount);
 	if (!actors_ptr || actor_count == 0) return 0;
 
 	uintptr_t local_pawn = Memory::read<uintptr_t>(PlayerController + Offsets::AcknowledgedPawn);
@@ -217,7 +218,7 @@ uintptr_t Engine::GetCameraManagerFromActors()
 		uintptr_t actor = Memory::read<uintptr_t>(actors_ptr + (i * sizeof(uintptr_t)));
 		if (!actor) continue;
 
-		uintptr_t view_target_target = Memory::read<uintptr_t>(actor + Offsets::ViewTargetTarget);
+		uintptr_t view_target_target = Memory::read<uintptr_t>(actor + Offsets::ViewTarget);
 
 		if (view_target_target == PlayerController || (local_pawn && view_target_target == local_pawn)) {
 			return actor;

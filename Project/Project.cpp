@@ -9,6 +9,10 @@
 #include <dwmapi.h>
 #include "Driver/Driver.hpp"
 #include <iostream>
+#include <thread>             // <-- ADICIONA ISTO
+#include "Core/Engine.h"      // <-- ADICIONA ISTO
+
+extern Engine engine;
 
 static ID3D11Device* g_pd3dDevice = nullptr;
 static ID3D11DeviceContext* g_pd3dDeviceContext = nullptr;
@@ -245,6 +249,24 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE, LPSTR, int)
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
     ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+
+    // =========================================================
+    // O SEGUNDO CÉREBRO: THREAD DE MEMÓRIA E AIMBOT
+    // =========================================================
+    std::thread memory_thread([]() {
+        while (true) {
+            engine.Update();         // 1º - Vai buscar os Pointers atualizados (UWorld, etc)
+            engine.EntityList();     // 2º - Atualiza o Cache dos Inimigos
+            engine.RobotList();      // 3º - Atualiza os Robôs
+            engine.WorldList();      // 4º - Atualiza o Loot
+            engine.AimAssistence();  // 5º - Move a mira se pressionares o botão
+
+            // Pausa minúscula para não colocar o CPU a 100% de uso
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        }
+        });
+    memory_thread.detach(); // Diz ao Windows para deixar esta thread rodar livremente
+    // =========================================================
 
     bool done = false;
     while (!done)

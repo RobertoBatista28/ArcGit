@@ -472,7 +472,7 @@ void Engine::AimAssistRobot(
         if (!robot.Drawing) continue;
         if (robot.Distance > var::aimbot_distance) continue;
 
-        uint8_t destroyed = Memory::read<uint8_t>(robot.APawn + Offsets::bIsBreaked);
+        uint8_t destroyed = Memory::read<uint8_t>(robot.APawn + Offsets::PlayerStatusVar);
         if (destroyed != 0)
             continue;
 

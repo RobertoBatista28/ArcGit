@@ -24,7 +24,7 @@ void Engine::EntityList()
 
         int actor_count =
             Memory::read<int>(
-                sPersistentLevel + (Offsets::AActors + sizeof(uintptr_t))
+                sPersistentLevel + Offsets::ActorCount
             );
 
         if (sActors == 0 || actor_count <= 0 || actor_count > 10000)
@@ -85,7 +85,7 @@ void Engine::EntityList()
                 continue;
 
             uintptr_t playerstate =
-                Memory::read<uintptr_t>(actor + Offsets::APlayerState);
+                Memory::read<uintptr_t>(actor + Offsets::PlayerState);
             if (!playerstate)
                 continue;
 
@@ -105,7 +105,7 @@ void Engine::EntityList()
                 continue;
 
             uintptr_t mesh =
-                Memory::read<uintptr_t>(actor + Offsets::USkeletalMeshComponent);
+                Memory::read<uintptr_t>(actor + Offsets::Mesh);
             if (!mesh)
                 continue;
 
@@ -134,7 +134,7 @@ void Engine::EntityList()
                 continue;
             }
 
-            auto playerState = Memory::read<uintptr_t>(key + Offsets::APlayerState);
+            auto playerState = Memory::read<uintptr_t>(key + Offsets::PlayerState);
             if (!playerState) {
                 it = localCache.erase(it);
                 continue;

@@ -601,7 +601,7 @@ public:
         if (!actor) return 0.0;
         uintptr_t health_comp = Memory::read<uintptr_t>(actor + Offsets::HealthComponent);
         if (!health_comp) return 0.0;
-        return Memory::read<double>(health_comp + Offsets::Health);
+        return Memory::read<double>(health_comp + Offsets::CachedHealth);
     }
 
     double get_maxhealth(uintptr_t actor)
@@ -617,7 +617,7 @@ public:
         if (!actor) return 0.0;
         uintptr_t health_comp = Memory::read<uintptr_t>(actor + Offsets::HealthComponent);
         if (!health_comp) return 0.0;
-        return Memory::read<double>(health_comp + Offsets::Shield);
+        return Memory::read<double>(health_comp + Offsets::Armor);
     }
 
     double get_maxarmor(uintptr_t actor)
@@ -625,7 +625,7 @@ public:
         if (!actor) return 0.0;
         uintptr_t health_comp = Memory::read<uintptr_t>(actor + Offsets::HealthComponent);
         if (!health_comp) return 0.0;
-        return Memory::read<double>(health_comp + Offsets::Shield + 0x8);
+        return Memory::read<double>(health_comp + Offsets::Armor + 0x8);
     }
 
     struct PlayerHealthInfo {
@@ -847,7 +847,7 @@ public:
 
         // Config
         double ou_theta = 3.5;      // Mean reversion rate
-        double ou_sigma = 0.4;      // Drift magnitude (reduzido para não atrapalhar)
+        double ou_sigma = 0.4;      // Drift magnitude (reduzido para nï¿½o atrapalhar)
         double sdn_k = 0.015;       // Signal-dependent noise (reduzido)
 
         double GetTimeMs() {
@@ -877,7 +877,7 @@ public:
             lastTimeMs = GetTimeMs();
         }
 
-        // Aplica humanização na rotação (pitch/yaw em graus)
+        // Aplica humanizaï¿½ï¿½o na rotaï¿½ï¿½o (pitch/yaw em graus)
         void ApplyToRotation(double& pitch, double& yaw, double movementSpeed = 1.0) {
             double currentTime = GetTimeMs();
             double dt_ms = currentTime - lastTimeMs;
