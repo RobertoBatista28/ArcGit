@@ -36,28 +36,26 @@ Vector3 Engine::GetBone(
 
 void Engine::GetBones(PlayerCacheEntry& actor)
 {
-    if (!IsValidPointer(actor.actorMesh))
+    if (!IsUsermodePtr(actor.actorMesh))
         return;
 
     actor.boneData.valid.reset();
     actor.boneData.isVisible = false;
 
-    if (!actor.boneArray)
-        actor.boneArray = GetBoneArrayDecrypt(actor.actorMesh);
+    // CRÍTICO: Remover o bloqueio de "if (!actor.boneArray)". 
+    // Avaliamos o TArray dinamicamente para evitar ficar com lixo cacheado!
+    actor.boneArray = GetBoneArrayDecrypt(actor.actorMesh);
 
-    if (!actor.boneArray || !IsValidPointer(actor.boneArray))
+    if (!actor.boneArray || !IsUsermodePtr(actor.boneArray))
         return;
 
-    FTransform componentToWorld =
-        Memory::read<FTransform>(
-            actor.actorMesh + Offsets::ComponentToWorld
-        );
+    FTransform componentToWorld = Memory::read<FTransform>(actor.actorMesh + Offsets::ComponentToWorld);
 
     for (const auto& [gameIndex, uniBone] : GameBoneMapArcRaiders)
     {
-        Vector3 worldPos =
-            GetBone(gameIndex, actor.boneArray, componentToWorld);
+        Vector3 worldPos = GetBone(gameIndex, actor.boneArray, componentToWorld);
 
+        // Se o FTransform devolver {0,0,0} a matemática das matrizes falhou (inválido).
         if (worldPos.x == 0.0 && worldPos.y == 0.0 && worldPos.z == 0.0)
             continue;
 
@@ -66,9 +64,7 @@ void Engine::GetBones(PlayerCacheEntry& actor)
             continue;
 
         size_t idx = (size_t)uniBone;
-        actor.boneData.bonesDouble[idx] =
-            Vector3{ screenPos.x, screenPos.y, 0.0 };
-
+        actor.boneData.bonesDouble[idx] = Vector3{ screenPos.x, screenPos.y, 0.0 };
         actor.boneData.bonesWorldDouble[idx] = worldPos;
 
         actor.boneData.valid.set(idx);

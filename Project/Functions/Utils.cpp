@@ -15,12 +15,22 @@
 
 void Engine::UpdateCamera()
 {
-    if (!PlayerCameraManager) return;
+    if (!PlayerCameraManager || !IsUsermodePtr(PlayerCameraManager)) return;
 
-    // A atualização de hoje mudou a câmara para offsets diretos no Manager
-    g_Camera.Location = Memory::read<Vector3>(PlayerCameraManager + Offsets::CameraLocation);
-    g_Camera.Rotation = Memory::read<Vector3>(PlayerCameraManager + Offsets::CameraRotation);
-    g_Camera.FOV = Memory::read<float>(PlayerCameraManager + Offsets::CameraFOV);
+    // Conforme o novo dump: 
+    // constexpr uintptr_t ViewTarget = 0xCA0;
+    // constexpr uintptr_t CameraCachePOV = ViewTarget + 0x10; (0xCB0)
+    // constexpr uintptr_t CameraLocation = CameraCachePOV + 0x10; (0xCC0)
+    // constexpr uintptr_t CameraRotation = CameraCachePOV + 0x30; (0xCE0)
+    // constexpr uintptr_t CameraFOV = CameraCachePOV + 0x50; (0xD00)
+
+    constexpr uintptr_t CACHE_LOCATION = 0xCB0 + 0x10;
+    constexpr uintptr_t CACHE_ROTATION = 0xCB0 + 0x30;
+    constexpr uintptr_t CACHE_FOV = 0xCB0 + 0x50;
+
+    g_Camera.Location = Memory::read<Vector3>(PlayerCameraManager + CACHE_LOCATION);
+    g_Camera.Rotation = Memory::read<Vector3>(PlayerCameraManager + CACHE_ROTATION);
+    g_Camera.FOV = Memory::read<float>(PlayerCameraManager + CACHE_FOV);
 }
 
 bool Engine::ProjectWorldLocationToScreen(
@@ -157,76 +167,94 @@ bool Engine::Has(const std::string& s, const char* sub)
 
 std::uintptr_t Engine::GetBoneArrayDecrypt(std::uintptr_t skeletalmesh)
 {
-    if (!skeletalmesh || !IsValidPointer(skeletalmesh))
+    if (!skeletalmesh || !IsUsermodePtr(skeletalmesh))
         return 0;
 
-    // Novos offsets da encriptação do Array
-    constexpr uintptr_t SHUFFLE_MASK_RVA = 0xAC2BC00;
     constexpr uintptr_t offset_encrypted = 0x780;
+    uint64_t encrypted = Memory::read<uint64_t>(skeletalmesh + offset_encrypted);
 
-    __m128i encrypted{};
-    Memory::ReadRaw(skeletalmesh + offset_encrypted, &encrypted, sizeof(__m128i));
+    if (!encrypted)
+        return 0;
 
-    static __m128i shuffle_mask{};
-    static bool mask_read = false;
-    if (!mask_read)
+    // Algoritmo "Shift" (Theia)
+    __m128i xmm0 = _mm_cvtsi64_si128(encrypted);
+    __m128i xmm1 = _mm_srli_epi32(xmm0, 0x0C);
+    xmm0 = _mm_slli_epi32(xmm0, 0x14);
+    xmm0 = _mm_or_si128(xmm0, xmm1);
+
+    static __m128i xorKey{};
+    static bool keyRead = false;
+    
+    // PROTEÇÃO: Só validamos a chave se ela NÃO for zero!
+    if (!keyRead)
     {
-        // Lê a chave de decriptação "Shuffle" da base do jogo
-        Memory::ReadRaw(Memory::getBaseAddress() + SHUFFLE_MASK_RVA, &shuffle_mask, sizeof(__m128i));
-        mask_read = true;
+        constexpr uintptr_t XOR_KEY_RVA = 0xAD2FC50;
+        Memory::ReadRaw(Memory::getBaseAddress() + XOR_KEY_RVA, &xorKey, sizeof(__m128i));
+        
+        uint64_t* pKey = (uint64_t*)&xorKey;
+        if (pKey[0] != 0 || pKey[1] != 0) {
+            keyRead = true; // A chave é real, podemos parar de ler.
+        }
     }
 
-    // Algoritmo SIMD do UnknownCheats
-    __m128i shuffled = _mm_shuffle_epi8(encrypted, shuffle_mask);
-    __m128i rotated = _mm_or_si128(_mm_slli_epi32(shuffled, 9), _mm_srli_epi32(shuffled, 23));
-    __m128i base_t = _mm_shufflelo_epi16(rotated, 0x4B);
-    uint64_t base = _mm_cvtsi128_si64(base_t);
+    xmm0 = _mm_xor_si128(xmm0, xorKey);
+    xmm1 = _mm_srli_epi16(xmm0, 4);
+    xmm0 = _mm_slli_epi16(xmm0, 0x0C);
+    xmm0 = _mm_or_si128(xmm0, xmm1);
 
-    if (!IsValidPointer(base))
+    uint64_t base = (uint64_t)_mm_cvtsi128_si64(xmm0);
+
+    if (!IsUsermodePtr(base))
         return 0;
 
-    // Flag e Índice do LOD (Level of Detail)
+    // Flag e Índice do LOD 
     uint32_t flagWord = Memory::read<uint32_t>(skeletalmesh + 0x810);
     uint32_t lod_index = (flagWord >> 0x1A) & 0x10;
 
+    // Retorna o ponteiro 'Data' do TArray de Ossos
     return Memory::read<uint64_t>(base + lod_index + 0x150);
 }
+//uintptr_t Engine::GetGameInstance(uint64_t uworldAddr)
+//{
+//    if (!uworldAddr) return 0;
+//
+//    // GameInstance agora usa fastcall (desencriptação)
+//    __m128i encrypted = Memory::read<__m128i>(uworldAddr + 0x458);
+//    __m128i mask = Memory::read<__m128i>(Memory::getBaseAddress() + 0xb09c350);
+//
+//    __m128i shuffled = _mm_shufflelo_epi16(encrypted, 0x93);
+//    __m128i rotated = _mm_or_si128(_mm_slli_epi16(shuffled, 1), _mm_srli_epi16(shuffled, 15));
+//
+//    return _mm_extract_epi64(_mm_shuffle_epi8(rotated, mask), 0);
+//}
 
-uintptr_t Engine::GetGameInstance(uint64_t uworldAddr)
-{
-    if (!uworldAddr) return 0;
-
-    // GameInstance agora usa fastcall (desencriptação)
-    __m128i encrypted = Memory::read<__m128i>(uworldAddr + 0x458);
-    __m128i mask = Memory::read<__m128i>(Memory::getBaseAddress() + 0xb09c350);
-
-    __m128i shuffled = _mm_shufflelo_epi16(encrypted, 0x93);
-    __m128i rotated = _mm_or_si128(_mm_slli_epi16(shuffled, 1), _mm_srli_epi16(shuffled, 15));
-
-    return _mm_extract_epi64(_mm_shuffle_epi8(rotated, mask), 0);
-}
-
-uintptr_t Engine::GetCameraManagerFromActors()
-{
-	uintptr_t actors_ptr = Memory::read<uintptr_t>(PersistentLevel + Offsets::AActors);
-	int actor_count = Memory::read<int>(PersistentLevel + Offsets::ActorCount);
-	if (!actors_ptr || actor_count == 0) return 0;
-
-	uintptr_t local_pawn = Memory::read<uintptr_t>(PlayerController + Offsets::AcknowledgedPawn);
-
-	for (int i = 0; i < actor_count; i++) {
-		uintptr_t actor = Memory::read<uintptr_t>(actors_ptr + (i * sizeof(uintptr_t)));
-		if (!actor) continue;
-
-		uintptr_t view_target_target = Memory::read<uintptr_t>(actor + Offsets::ViewTarget);
-
-		if (view_target_target == PlayerController || (local_pawn && view_target_target == local_pawn)) {
-			return actor;
-		}
-	}
-
-	return 0;
-}
+//uintptr_t Engine::GetCameraManagerFromActors()
+//{
+//    uintptr_t actors_ptr = Memory::read<uintptr_t>(PersistentLevel + Offsets::AActors);
+//    int actor_count = Memory::read<int>(PersistentLevel + Offsets::ActorCount);
+//
+//    if (!actors_ptr || actor_count <= 0 || actor_count > 10000 || !PlayerController)
+//        return 0;
+//
+//    std::vector<uint64_t> all_actors(actor_count);
+//    if (!Memory::ReadRaw(actors_ptr, all_actors.data(), actor_count * sizeof(uint64_t)))
+//        return 0;
+//
+//    for (int i = 0; i < actor_count; i++) {
+//        uintptr_t actor = all_actors[i];
+//        if (!actor || !IsUsermodePtr(actor)) continue;
+//
+//        // Num PlayerCameraManager, o offset 0x430 aponta para o seu Dono (PlayerController)
+//        uintptr_t pc_owner = Memory::read<uintptr_t>(actor + Offsets::PCOwner);
+//
+//        // Se o "Dono" desta câmara for o nosso PlayerController, então achámos a NOSSA câmara!
+//        if (pc_owner == PlayerController) {
+//            return actor;
+//        }
+//    }
+//
+//    return 0;
+//}
 
 bool Engine::getAllowType(const std::string& actorName)
 {

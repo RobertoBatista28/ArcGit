@@ -10,9 +10,22 @@ Engine engine = Engine(); // A nossa instância principal do motor
 
 void Render(HWND hwnd)
 {
-    if (showmenu) {
-        SetWindowLongPtr(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) & ~WS_EX_LAYERED);
+    // 1. Lógica correta de clique de rato e transparência
+    // (Apenas executa um pedido à API do Windows quando abrimos ou fechamos o menu, em vez de o fazer a cada frame)
+    static bool menu_estado_anterior = false; // Garante que atualiza na primeira iteração
+    if (showmenu != menu_estado_anterior) {
+        if (showmenu) {
+            // Menu Aberto: Permite clicar no menu ImGui (removemos a flag TRANSPARENT)
+            SetWindowLongPtr(hwnd, GWL_EXSTYLE, WS_EX_TOPMOST | WS_EX_LAYERED);
+        }
+        else {
+            // Menu Fechado: Os cliques do rato ignoram a nossa janela e passam para o jogo (adicionamos TRANSPARENT)
+            SetWindowLongPtr(hwnd, GWL_EXSTYLE, WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_LAYERED);
+        }
+        menu_estado_anterior = showmenu;
+    }
 
+    if (showmenu) {
         ImGui::SetNextWindowSize(ImVec2(520.f, 400.f), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowBgAlpha(0.97f);
 
@@ -73,12 +86,13 @@ void Render(HWND hwnd)
         }
         ImGui::End();
     }
-    else {
-        SetWindowLongPtr(hwnd, GWL_EXSTYLE, GetWindowLong(hwnd, GWL_EXSTYLE) | WS_EX_LAYERED);
 
-        // Aqui SÓ FICA a parte gráfica! Nada de cálculos pesados de memória.
-        engine.RenderEsp();
+    // 2. Renderizar ESP independentemente do menu estar aberto ou fechado!
+    // Assim o cheat nunca para de processar os grafismos, e previne falhas de memória.
+    engine.RenderEsp();
+
+    // 3. Lógica do botão de Toggle (INSERT)
+    if (GetAsyncKeyState(VK_INSERT) & 1) {
+        showmenu = !showmenu;
     }
-
-    if (GetAsyncKeyState(VK_INSERT) & 1) { showmenu = !showmenu; }
 }

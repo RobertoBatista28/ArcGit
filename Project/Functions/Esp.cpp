@@ -4,6 +4,7 @@
 #include "../Core/Memory.h"
 #include "../Interface/Utils/Variables/index.h"
 #include "../Interface/Utils/Visuals/visuals.hpp"
+#include <shared_mutex> // <-- Necessário para o lock!
 
 void Engine::RenderEsp() {
     if (!var::enableesp)
@@ -13,13 +14,17 @@ void Engine::RenderEsp() {
 
     ImDrawList* drawList = ImGui::GetForegroundDrawList();
 
+    // A MAGIA ESTÁ AQUI: Bloqueia o acesso à memória só para nós enquanto desenhamos,
+    // impedindo o EntityList de reescrever os inimigos a meio do desenho! (Evita o fecho do cheat)
+    std::shared_lock<std::shared_mutex> lock(m_playerCacheMutex);
+
     for (const auto& [key, actor] : playerCache) {
         if (!actor.Drawing) continue;
         if (actor.health < 1.0f || actor.health < 1) continue;
 
         if (var::box) {
             auto color = actor.isVisible ? ImColor(255, 255, 255, 255) : ImColor(255, 0, 0, 255);
-			auto colortwo = actor.bIsDeathVerge ? ImColor(209, 92, 255, 255) : color;
+            auto colortwo = actor.bIsDeathVerge ? ImColor(209, 92, 255, 255) : color;
             Visuals::Box(actor.ScreenTop, actor.ScreenBottom, actor.isVisible, colortwo, 1);
         }
 
@@ -84,8 +89,6 @@ void Engine::RenderEsp() {
                     1.0f
                 );
             }
-
         }
-
     }
 }

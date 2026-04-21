@@ -75,9 +75,17 @@ public:
         return true;
     }
 
-    // novo
+    // Funções de leitura BLINDADAS
     static bool read(const void* address, void* buffer, DWORD64 size)
     {
+        uintptr_t addr = reinterpret_cast<uintptr_t>(address);
+
+        // PROTEÇÃO ANTI-BSOD: Bloqueia Null Pointers e Kernel Space
+        if (addr < 0x10000 || addr > 0x7FFFFFFFFFFF) {
+            memset(buffer, 0, size); // Evita lixo na variável de destino
+            return false;
+        }
+
         Kernel::rmem((PVOID)address, buffer, size);
         return true;
     }
@@ -145,6 +153,10 @@ public:
     // Fun��es de escrita
     static void write(void* address, const void* buffer, DWORD64 size)
     {
+        uintptr_t addr = reinterpret_cast<uintptr_t>(address);
+        if (addr < 0x10000 || addr > 0x7FFFFFFFFFFF) {
+            return;
+        }
         Kernel::wmem((PVOID)address, (PVOID)buffer, size);
     }
 

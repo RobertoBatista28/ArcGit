@@ -84,9 +84,8 @@ void Engine::EntityList()
             if (actor == sAcknowledgedPawn)
                 continue;
 
-            uintptr_t playerstate =
-                Memory::read<uintptr_t>(actor + Offsets::PlayerState);
-            if (!playerstate)
+            uintptr_t playerstate = Memory::read<uintptr_t>(actor + Offsets::PlayerState);
+            if (!playerstate || !IsUsermodePtr(playerstate)) // <-- Adicionar verificação rígida
                 continue;
 
             PlayerHealthInfo healthInfo = Memory::read<PlayerHealthInfo>(playerstate + Offsets::HealthInfo);

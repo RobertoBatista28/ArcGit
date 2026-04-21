@@ -24,7 +24,7 @@ private:
     SyncedThread* robotespThread = nullptr;
     SyncedThread* clearCacheThread = nullptr;
     SyncedThread* AimThread = nullptr;
-    bool debugLog = false;
+    bool debugLog = true;
     bool debugWorld = false;
     bool entityStarted = false;
 

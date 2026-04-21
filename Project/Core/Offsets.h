@@ -29,6 +29,8 @@ namespace Offsets {
 	constexpr std::ptrdiff_t PlayerState = 0x3D0;
 	constexpr std::ptrdiff_t PawnPrivate = 0x428;  // APlayerState (mesmo offset, classe diferente)
 	constexpr std::ptrdiff_t PlayerNamePrivate = 0x448;
+	constexpr std::ptrdiff_t PlayerArray = 0x490;
+	constexpr std::ptrdiff_t PlayerCount = 0x498;
 	
 	// --- Componentes UE5 ---
 	constexpr std::ptrdiff_t RootComponent = 0x230;

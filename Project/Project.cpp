@@ -11,6 +11,18 @@
 #include <iostream>
 #include <thread>             // <-- ADICIONA ISTO
 #include "Core/Engine.h"      // <-- ADICIONA ISTO
+#include <fstream>
+#include <string>
+
+// Função especial para rastrear BSODs
+void BSOD_Log(const std::string& message) {
+    // Escreve diretamente na raiz do C: para não haver problemas de permissões com pastas
+    std::ofstream logFile("C:\\BSOD_Tracker.txt", std::ios_base::app);
+    if (logFile.is_open()) {
+        logFile << "[Rastreio] " << message << std::endl;
+        logFile.flush(); // CRÍTICO: Força o SO a guardar no disco naquele exato milissegundo!
+    }
+}
 
 extern Engine engine;
 
@@ -254,15 +266,25 @@ int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE, LPSTR, int)
     // O SEGUNDO CÉREBRO: THREAD DE MEMÓRIA E AIMBOT
     // =========================================================
     std::thread memory_thread([]() {
-        while (true) {
-            engine.Update();         // 1º - Vai buscar os Pointers atualizados (UWorld, etc)
-            engine.EntityList();     // 2º - Atualiza o Cache dos Inimigos
-            engine.RobotList();      // 3º - Atualiza os Robôs
-            engine.WorldList();      // 4º - Atualiza o Loot
-            engine.AimAssistence();  // 5º - Move a mira se pressionares o botão
+        // BSOD_Log("Iniciando a Thread de Memória..."); // Descomente para testar
 
-            // Pausa minúscula para não colocar o CPU a 100% de uso
-            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        while (true) {
+            // BSOD_Log(">> Iniciando Update");
+            engine.Update();
+
+            // BSOD_Log(">> Iniciando EntityList");
+            engine.EntityList();
+
+            // BSOD_Log(">> Iniciando RobotList");
+            engine.RobotList();
+
+            // BSOD_Log(">> Iniciando WorldList");
+            engine.WorldList();
+
+            // BSOD_Log(">> Iniciando AimAssistence");
+            engine.AimAssistence();
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(15));
         }
         });
     memory_thread.detach(); // Diz ao Windows para deixar esta thread rodar livremente
